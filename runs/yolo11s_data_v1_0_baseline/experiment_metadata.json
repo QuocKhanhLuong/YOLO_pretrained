@@ -1,0 +1,31 @@
+{
+  "data": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/data/versions/data_v1.0/data.yaml",
+  "experiment_name": "yolo11s_data_v1_0_baseline",
+  "parameters": {
+    "amp": true,
+    "batch": 8,
+    "close_mosaic": 15,
+    "cos_lr": true,
+    "device": "0",
+    "epochs": 100,
+    "imgsz": 960,
+    "lr0": 0.001,
+    "optimizer": "AdamW",
+    "patience": 30,
+    "resume": false,
+    "seed": 42,
+    "single_cls": false,
+    "workers": 4
+  },
+  "phase_3_todo": "Export best.pt to ONNX/TensorRT in Phase 3.",
+  "project": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs",
+  "run_dir": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_0_baseline",
+  "software": {
+    "python": "3.10.20",
+    "torch": "2.12.0",
+    "ultralytics": "8.4.51"
+  },
+  "started_at": "2026-05-19T17:23:38.362937+00:00",
+  "status": "started",
+  "weights": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/pretrained_weights/yolo11s.pt"
+}

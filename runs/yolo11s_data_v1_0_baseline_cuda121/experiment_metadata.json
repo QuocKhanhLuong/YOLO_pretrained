@@ -1,0 +1,46 @@
+{
+  "best_model": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_0_baseline_cuda121/weights/best.pt",
+  "data": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/data/versions/data_v1.0/data.yaml",
+  "experiment_name": "yolo11s_data_v1_0_baseline_cuda121",
+  "final_metrics": {
+    "metrics/mAP50(B)": "0.26923",
+    "metrics/mAP50-95(B)": "0.11721",
+    "metrics/precision(B)": "0.39839",
+    "metrics/recall(B)": "0.30499",
+    "train/box_loss": "0.89838",
+    "train/cls_loss": "0.6029",
+    "train/dfl_loss": "1.09488",
+    "val/box_loss": "2.27603",
+    "val/cls_loss": "2.82731",
+    "val/dfl_loss": "2.25087"
+  },
+  "finished_at": "2026-05-19T18:02:03.094296+00:00",
+  "last_model": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_0_baseline_cuda121/weights/last.pt",
+  "parameters": {
+    "amp": true,
+    "batch": 8,
+    "close_mosaic": 15,
+    "cos_lr": true,
+    "device": "0",
+    "epochs": 100,
+    "imgsz": 960,
+    "lr0": 0.001,
+    "optimizer": "AdamW",
+    "patience": 30,
+    "resume": false,
+    "seed": 42,
+    "single_cls": false,
+    "workers": 4
+  },
+  "phase_3_todo": "Export best.pt to ONNX/TensorRT in Phase 3.",
+  "project": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs",
+  "run_dir": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_0_baseline_cuda121",
+  "software": {
+    "python": "3.10.20",
+    "torch": "2.5.1+cu121",
+    "ultralytics": "8.4.51"
+  },
+  "started_at": "2026-05-19T17:39:27.041733+00:00",
+  "status": "completed",
+  "weights": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/pretrained_weights/yolo11s.pt"
+}
