@@ -136,16 +136,102 @@ dvc pull
 ```bash
 yolo detect train \
   data=data/versions/data_v1.0/data.yaml \
-  model=yolov10n.pt \
+  model=yolo11s.pt \
   epochs=100 \
-  imgsz=640
+  imgsz=960
 ```
+
+## Phase 2 YOLO Fine-Tuning Pipeline
+
+Phase 2 fine-tunes an Ultralytics YOLO model on the prepared dataset. The scope
+is generic object/person detection training, metric tracking, visualization, and
+export preparation.
+
+Install runtime dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Prepare pretrained weights:
+
+```bash
+python scripts/prepare_pretrained_weights.py \
+  --model yolo11s.pt \
+  --output-dir pretrained_weights
+```
+
+Train the baseline:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.0/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 100 \
+  --imgsz 960 \
+  --batch 8 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_0_baseline \
+  --optimizer AdamW \
+  --lr0 0.001 \
+  --patience 30 \
+  --workers 4
+```
+
+Plot metrics:
+
+```bash
+python scripts/plot_training_metrics.py \
+  --results runs/yolo11s_data_v1_0_baseline/results.csv \
+  --output-dir reports/yolo11s_data_v1_0_baseline/plots
+```
+
+Validate `best.pt`:
+
+```bash
+python scripts/validate_yolo.py \
+  --weights runs/yolo11s_data_v1_0_baseline/weights/best.pt \
+  --data data/versions/data_v1.0/data.yaml \
+  --imgsz 960 \
+  --batch 8 \
+  --device 0 \
+  --split val \
+  --project runs \
+  --name yolo11s_data_v1_0_val
+```
+
+Run test prediction visualization:
+
+```bash
+python scripts/predict_yolo.py \
+  --weights runs/yolo11s_data_v1_0_baseline/weights/best.pt \
+  --source data/versions/data_v1.0/images/test \
+  --imgsz 960 \
+  --conf 0.25 \
+  --iou 0.5 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_0_test_predictions \
+  --max-det 300
+```
+
+Generate the training report:
+
+```bash
+python scripts/generate_training_report.py \
+  --run-dir runs/yolo11s_data_v1_0_baseline \
+  --dataset data/versions/data_v1.0 \
+  --output reports/yolo11s_data_v1_0_baseline/training_report.md
+```
+
+For details, see `docs/TRAINING_GUIDE.md`.
 
 ## ONNX Export Example
 
 ```bash
 yolo export \
-  model=runs/detect/train/weights/best.pt \
+  model=runs/yolo11s_data_v1_0_baseline/weights/best.pt \
   format=onnx \
   opset=12
 ```
