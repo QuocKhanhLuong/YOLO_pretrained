@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-05-20
+
+### Added
+
+- Added `scripts/eda_yolo_dataset.py` to generate YOLO dataset EDA reports,
+  image summaries, box summaries, JSON stats, and optional plots.
+- Added `scripts/filter_yolo_classes.py` to create filtered/remapped dataset
+  versions such as `data_v1.1_vehicle_soldier` from `data_v1.0` without
+  modifying the source dataset.
+- Added `docs/DATASET_EDA_AND_FILTERING.md` with the EDA, two-class filtering,
+  DVC tracking, and recommended retraining workflow.
+- Updated `GUIDE.md`, `docs/TRAINING_GUIDE.md`, and `docs/DATASET_GUIDE.md`
+  with the data_v1.0 EDA and vehicle/soldier retraining commands.
+- Added `pillow` to `requirements.txt` for image-size EDA.
+
 ## 2026-05-19
 
 ### Added

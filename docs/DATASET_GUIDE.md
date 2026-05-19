@@ -119,3 +119,27 @@ Rules:
 - `x_center` and `y_center` are floats in `[0, 1]`.
 - `width` and `height` are floats greater than `0` and less than or equal to `1`.
 - All coordinates are normalized to `[0, 1]` relative to image width and height.
+
+## Dataset EDA And Class Filtering
+
+Use EDA when training artifacts show size imbalance, small boxes, weak recall, or
+unexpected class behavior:
+
+```bash
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v1.0 \
+  --output-dir reports/data_v1.0/eda
+```
+
+Use class filtering to create a new dataset version without modifying the
+original:
+
+```bash
+python scripts/filter_yolo_classes.py \
+  --source-dataset data/versions/data_v1.0 \
+  --output data/versions/data_v1.1_vehicle_soldier \
+  --version data_v1.1_vehicle_soldier \
+  --include-classes vehicle soldier
+```
+
+See `docs/DATASET_EDA_AND_FILTERING.md` for the full workflow.

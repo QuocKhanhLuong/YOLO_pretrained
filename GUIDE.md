@@ -131,6 +131,41 @@ dvc pull
 - `data_v1.1`: label-fix version.
 - `data_v2.0`: added-data version.
 
+## EDA And Two-Class Dataset Version
+
+After the first baseline run, use EDA before training again:
+
+```bash
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v1.0 \
+  --output-dir reports/data_v1.0/eda
+```
+
+Create a two-class version for `vehicle` and `soldier`:
+
+```bash
+python scripts/filter_yolo_classes.py \
+  --source-dataset data/versions/data_v1.0 \
+  --output data/versions/data_v1.1_vehicle_soldier \
+  --version data_v1.1_vehicle_soldier \
+  --include-classes vehicle soldier
+```
+
+Validate and inspect the new version:
+
+```bash
+python scripts/check_yolo_dataset.py \
+  --dataset data/versions/data_v1.1_vehicle_soldier
+
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v1.1_vehicle_soldier \
+  --output-dir reports/data_v1.1_vehicle_soldier/eda
+```
+
+The class order above remaps labels to `0 vehicle` and `1 soldier`. Images that
+only had removed classes are kept as empty-label background samples by default.
+See `docs/DATASET_EDA_AND_FILTERING.md` for details.
+
 ## YOLO Training Example
 
 ```bash
@@ -177,6 +212,25 @@ python scripts/train_yolo.py \
   --lr0 0.001 \
   --patience 30 \
   --workers 4
+```
+
+Train the two-class follow-up:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.1_vehicle_soldier/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 80 \
+  --imgsz 1280 \
+  --batch 4 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4 \
+  --optimizer AdamW \
+  --lr0 0.0003 \
+  --patience 20 \
+  --workers 4 \
+  --close-mosaic 10
 ```
 
 Plot metrics:

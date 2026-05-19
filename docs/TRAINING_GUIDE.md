@@ -218,6 +218,53 @@ python scripts/generate_training_report.py \
 - Inspect labels carefully, especially for tiny objects.
 - Keep a separate test split for final model selection.
 
+## Two-Class Retraining Path
+
+If the target task is only `vehicle` and `soldier`, create a new filtered dataset
+version before retraining:
+
+```bash
+python scripts/filter_yolo_classes.py \
+  --source-dataset data/versions/data_v1.0 \
+  --output data/versions/data_v1.1_vehicle_soldier \
+  --version data_v1.1_vehicle_soldier \
+  --include-classes vehicle soldier
+```
+
+Run EDA before and after filtering:
+
+```bash
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v1.0 \
+  --output-dir reports/data_v1.0/eda
+
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v1.1_vehicle_soldier \
+  --output-dir reports/data_v1.1_vehicle_soldier/eda
+```
+
+Recommended follow-up training command:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.1_vehicle_soldier/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 80 \
+  --imgsz 1280 \
+  --batch 4 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4 \
+  --optimizer AdamW \
+  --lr0 0.0003 \
+  --patience 20 \
+  --workers 4 \
+  --close-mosaic 10
+```
+
+If this still misses small objects, move to a tiling/crop dataset preparation
+phase instead of only increasing epochs.
+
 ## If Overfitting Happens
 
 - Check whether training loss keeps dropping while validation mAP stalls or falls.
