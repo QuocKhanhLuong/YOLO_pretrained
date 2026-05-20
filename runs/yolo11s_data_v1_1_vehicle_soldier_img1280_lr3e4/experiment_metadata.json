@@ -1,0 +1,46 @@
+{
+  "best_model": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4/weights/best.pt",
+  "data": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/data/versions/data_v1.1_vehicle_soldier/data.yaml",
+  "experiment_name": "yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4",
+  "final_metrics": {
+    "metrics/mAP50(B)": "0.3494",
+    "metrics/mAP50-95(B)": "0.14861",
+    "metrics/precision(B)": "0.43713",
+    "metrics/recall(B)": "0.3994",
+    "train/box_loss": "0.9401",
+    "train/cls_loss": "0.65292",
+    "train/dfl_loss": "1.10259",
+    "val/box_loss": "2.23602",
+    "val/cls_loss": "2.90454",
+    "val/dfl_loss": "2.34122"
+  },
+  "finished_at": "2026-05-19T18:51:13.570342+00:00",
+  "last_model": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4/weights/last.pt",
+  "parameters": {
+    "amp": true,
+    "batch": 16,
+    "close_mosaic": 10,
+    "cos_lr": true,
+    "device": "0",
+    "epochs": 200,
+    "imgsz": 1280,
+    "lr0": 0.0003,
+    "optimizer": "AdamW",
+    "patience": 20,
+    "resume": false,
+    "seed": 42,
+    "single_cls": false,
+    "workers": 4
+  },
+  "phase_3_todo": "Export best.pt to ONNX/TensorRT in Phase 3.",
+  "project": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs",
+  "run_dir": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/runs/yolo11s_data_v1_1_vehicle_soldier_img1280_lr3e4",
+  "software": {
+    "python": "3.10.20",
+    "torch": "2.5.1+cu121",
+    "ultralytics": "8.4.51"
+  },
+  "started_at": "2026-05-19T18:31:43.307884+00:00",
+  "status": "completed",
+  "weights": "/home/linhdang/workspace/quockhanh_workspace/YOLO_pretrained/pretrained_weights/yolo11s.pt"
+}
