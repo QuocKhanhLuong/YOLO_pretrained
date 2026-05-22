@@ -215,8 +215,132 @@ python scripts/generate_training_report.py \
 - Try `imgsz 1280` if GPU memory allows.
 - Adjust `batch` to fit GPU memory.
 - Keep `close_mosaic` around `10` to `15`.
+- Reduce heavy geometry and color augmentation when tiny objects become blurred,
+  cropped away, or visually unrealistic.
 - Inspect labels carefully, especially for tiny objects.
 - Keep a separate test split for final model selection.
+
+## Low-Augmentation Recipes
+
+Use these recipes as controlled experiments, not as replacements for label and
+split checks. Keep the same dataset, weights, image size, seed, and train/val
+split when comparing augmentation settings.
+
+### Small UAV Objects
+
+Tiny objects can be harmed by strong mosaic, scale, translation, or color jitter
+because the object may become even smaller or visually inconsistent. Start with
+a lighter augmentation run:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.0/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 100 \
+  --imgsz 1280 \
+  --batch 4 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_0_small_uav_low_aug \
+  --optimizer AdamW \
+  --lr0 0.0005 \
+  --patience 30 \
+  --workers 4 \
+  --mosaic 0.2 \
+  --scale 0.2 \
+  --translate 0.05 \
+  --hsv-h 0.005 \
+  --hsv-s 0.25 \
+  --hsv-v 0.20 \
+  --degrees 0.0 \
+  --fliplr 0.5 \
+  --flipud 0.0 \
+  --close-mosaic 10 \
+  --weight-decay 0.0005 \
+  --warmup-epochs 3.0
+```
+
+If validation recall improves but precision drops, review false positives before
+changing the recipe. If both precision and recall stay poor, inspect labels and
+consider tiling/cropping instead of raising augmentation strength.
+
+### Very Small or Noisy Datasets
+
+When the dataset is small, duplicated, or has inconsistent labels, reduce
+augmentation further so the model first learns the actual annotation policy:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.0/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 80 \
+  --imgsz 1280 \
+  --batch 4 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_0_min_aug_label_audit \
+  --optimizer AdamW \
+  --lr0 0.0003 \
+  --patience 20 \
+  --workers 4 \
+  --mosaic 0.0 \
+  --scale 0.1 \
+  --translate 0.02 \
+  --hsv-h 0.0 \
+  --hsv-s 0.15 \
+  --hsv-v 0.15 \
+  --degrees 0.0 \
+  --fliplr 0.5 \
+  --flipud 0.0 \
+  --close-mosaic 0 \
+  --freeze 10 \
+  --weight-decay 0.0007 \
+  --warmup-epochs 4.0
+```
+
+Use this run to find mislabeled samples, missing boxes, duplicated frames across
+splits, or classes that are not visually separable at the current resolution.
+`--freeze 10` is a transfer-learning control for small datasets; compare it
+against an unfrozen run before keeping it.
+
+### Class-Confusion Reduction
+
+If the confusion matrix shows visually similar classes being swapped, first
+reduce transforms that change appearance or crop context. Keep horizontal flips
+only when left/right orientation does not change the label:
+
+```bash
+python scripts/train_yolo.py \
+  --data data/versions/data_v1.0/data.yaml \
+  --weights pretrained_weights/yolo11s.pt \
+  --epochs 100 \
+  --imgsz 1280 \
+  --batch 4 \
+  --device 0 \
+  --project runs \
+  --name yolo11s_data_v1_0_class_confusion_low_aug \
+  --optimizer AdamW \
+  --lr0 0.0003 \
+  --patience 30 \
+  --workers 4 \
+  --mosaic 0.1 \
+  --scale 0.15 \
+  --translate 0.03 \
+  --hsv-h 0.003 \
+  --hsv-s 0.20 \
+  --hsv-v 0.20 \
+  --degrees 0.0 \
+  --fliplr 0.5 \
+  --flipud 0.0 \
+  --close-mosaic 15 \
+  --weight-decay 0.0007 \
+  --warmup-epochs 4.0
+```
+
+If class confusion remains high, compare per-class examples side by side and
+fix the dataset before tuning more hyperparameters. For a temporary objectness
+sanity check only, use `--single-cls`; do not use that setting for final
+multi-class model comparison.
 
 ## Two-Class Retraining Path
 

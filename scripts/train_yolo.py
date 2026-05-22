@@ -125,6 +125,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-amp", dest="amp", action="store_false")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--close-mosaic", type=int, default=15)
+    parser.add_argument("--mosaic", type=float, default=1.0)
+    parser.add_argument("--scale", type=float, default=0.5)
+    parser.add_argument("--translate", type=float, default=0.1)
+    parser.add_argument("--hsv-h", dest="hsv_h", type=float, default=0.015)
+    parser.add_argument("--hsv-s", dest="hsv_s", type=float, default=0.7)
+    parser.add_argument("--hsv-v", dest="hsv_v", type=float, default=0.4)
+    parser.add_argument("--degrees", type=float, default=0.0)
+    parser.add_argument("--fliplr", type=float, default=0.5)
+    parser.add_argument("--flipud", type=float, default=0.0)
+    parser.add_argument("--freeze", type=int, default=None)
+    parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=0.0005)
+    parser.add_argument("--warmup-epochs", dest="warmup_epochs", type=float, default=3.0)
     parser.add_argument("--single-cls", action="store_true")
     parser.add_argument(
         "--dry-run",
@@ -175,6 +187,18 @@ def main() -> int:
             "amp": args.amp,
             "seed": args.seed,
             "close_mosaic": args.close_mosaic,
+            "mosaic": args.mosaic,
+            "scale": args.scale,
+            "translate": args.translate,
+            "hsv_h": args.hsv_h,
+            "hsv_s": args.hsv_s,
+            "hsv_v": args.hsv_v,
+            "degrees": args.degrees,
+            "fliplr": args.fliplr,
+            "flipud": args.flipud,
+            "freeze": args.freeze,
+            "weight_decay": args.weight_decay,
+            "warmup_epochs": args.warmup_epochs,
             "single_cls": args.single_cls,
         },
         "software": {
@@ -219,6 +243,18 @@ def main() -> int:
         "amp": args.amp,
         "seed": args.seed,
         "close_mosaic": args.close_mosaic,
+        "mosaic": args.mosaic,
+        "scale": args.scale,
+        "translate": args.translate,
+        "hsv_h": args.hsv_h,
+        "hsv_s": args.hsv_s,
+        "hsv_v": args.hsv_v,
+        "degrees": args.degrees,
+        "fliplr": args.fliplr,
+        "flipud": args.flipud,
+        "freeze": args.freeze,
+        "weight_decay": args.weight_decay,
+        "warmup_epochs": args.warmup_epochs,
         "single_cls": args.single_cls,
         "exist_ok": True,
     }
