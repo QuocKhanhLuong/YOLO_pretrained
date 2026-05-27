@@ -131,6 +131,44 @@ dvc pull
 - `data_v1.1`: label-fix version.
 - `data_v2.0`: added-data version.
 
+## Phase data_v2.0: DB Backup Workflow
+
+`data_v2.0` is built from `backup_root/labeling_db.sql.gz` using DB frames and
+DB annotation `yolo_text`, then tracked with DVC, packaged, transferred with
+rclone, and trained on the 5060Ti machine.
+
+Start with the full workflow:
+
+```bash
+docs/V2_DB_DATASET_WORKFLOW.md
+```
+
+Core server commands:
+
+```bash
+python scripts/inspect_db_annotations.py \
+  --backup-root /home/linhdang/workspace2/binhanworkspace/back_up_data/20260526_155221 \
+  --project-id 5 \
+  --image-root-override /home/linhdang/workspace2/binhanworkspace/label-img/data/label-system
+
+python scripts/build_data_v2_from_db.py \
+  --backup-root /home/linhdang/workspace2/binhanworkspace/back_up_data/20260526_155221 \
+  --output data/versions/data_v2.0 \
+  --version data_v2.0 \
+  --project-id 5 \
+  --train-ratio 0.8 \
+  --val-ratio 0.1 \
+  --test-ratio 0.1 \
+  --seed 42 \
+  --split-by-video \
+  --image-root-override /home/linhdang/workspace2/binhanworkspace/label-img/data/label-system \
+  --max-missing-ratio 0.03 \
+  --force
+```
+
+Do not use `backup_root/output` or `backup_root/dataset_raw/*.zip` labels for
+this phase.
+
 ## EDA And Two-Class Dataset Version
 
 After the first baseline run, use EDA before training again:
