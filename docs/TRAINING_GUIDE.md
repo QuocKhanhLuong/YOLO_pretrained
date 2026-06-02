@@ -199,6 +199,35 @@ python scripts/generate_training_report.py \
   --output reports/yolo11s_data_v1_0_baseline/training_report.md
 ```
 
+## Run YOLO Dataset EDA
+
+Run EDA before interpreting low recall, class-level AP gaps, or a large
+`mAP50` versus `mAP50-95` gap. The report summarizes split balance, class
+counts, tiny boxes, pixel box sizes, image quality proxies, label warnings, and
+sample ground-truth overlays.
+
+```bash
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v2.0 \
+  --output-dir reports/data_v2_0_eda \
+  --sample-images 40 \
+  --seed 42
+```
+
+With model prediction context:
+
+```bash
+RUN=yolo11m_data_v2_0_kaggle_img1280_b4_e100
+
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v2.0 \
+  --output-dir reports/data_v2_0_eda \
+  --sample-images 40 \
+  --seed 42 \
+  --run-dir runs/$RUN \
+  --pred-dir runs/${RUN}_pred_conf010
+```
+
 ## Generate Markdown Experiment Report
 
 For `data_v2.0` runs, generate test artifacts and prediction samples before
