@@ -1,3 +1,4 @@
 ultralytics
 matplotlib
 Pillow
+wandb

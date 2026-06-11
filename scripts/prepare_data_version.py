@@ -16,11 +16,18 @@ import math
 import random
 import shutil
 import sys
+import time
 from pathlib import Path
 
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 SPLITS = ("train", "val", "test")
+MANIFEST_CANDIDATES = (
+    "manifest.csv",
+    "docker_labeled_manifest.csv",
+    "labeled_images_manifest.csv",
+    "docker_labeled_in_backup_manifest.csv",
+)
 
 
 def yaml_scalar(value: str | Path) -> str:
@@ -53,6 +60,18 @@ def read_classes(classes_path: Path) -> list[str]:
     ]
     if not names:
         raise ValueError(f"classes.txt has no class names: {classes_path}")
+    return names
+
+
+def read_cli_classes(class_names: list[str], class_names_csv: str | None) -> list[str]:
+    """Read class names from CLI args while preserving the caller's order."""
+    names: list[str] = []
+    if class_names_csv:
+        names.extend(name.strip() for name in class_names_csv.split(","))
+    names.extend(name.strip() for name in class_names)
+    names = [name for name in names if name]
+    if not names:
+        raise ValueError("class names are empty")
     return names
 
 
@@ -92,7 +111,35 @@ def validate_ratios(train_ratio: float, val_ratio: float, test_ratio: float) -> 
         )
 
 
-def validate_source(source_dir: Path) -> tuple[Path, Path, Path, Path]:
+def resolve_manifest_path(source_dir: Path, manifest_arg: str | None) -> Path:
+    """Resolve an explicit or known manifest file inside the source export."""
+    if manifest_arg:
+        manifest_path = Path(manifest_arg).expanduser()
+        if not manifest_path.is_absolute():
+            manifest_path = source_dir / manifest_path
+        if not manifest_path.exists():
+            raise FileNotFoundError(f"manifest file does not exist: {manifest_path}")
+        if not manifest_path.is_file():
+            raise FileNotFoundError(f"manifest path is not a file: {manifest_path}")
+        return manifest_path
+
+    for candidate in MANIFEST_CANDIDATES:
+        manifest_path = source_dir / candidate
+        if manifest_path.is_file():
+            return manifest_path
+
+    raise FileNotFoundError(
+        "source directory is missing a supported manifest file: "
+        + ", ".join(MANIFEST_CANDIDATES)
+    )
+
+
+def validate_source(
+    source_dir: Path,
+    cli_class_names: list[str],
+    class_names_csv: str | None,
+    manifest_arg: str | None,
+) -> tuple[Path, Path, list[str], str, Path]:
     """Validate the required Labeling System export structure."""
     if not source_dir.exists():
         raise FileNotFoundError(f"source directory does not exist: {source_dir}")
@@ -102,11 +149,10 @@ def validate_source(source_dir: Path) -> tuple[Path, Path, Path, Path]:
     images_dir = source_dir / "images"
     labels_dir = source_dir / "labels"
     classes_path = source_dir / "classes.txt"
-    manifest_path = source_dir / "manifest.csv"
 
     missing = [
         str(path)
-        for path in (images_dir, labels_dir, classes_path, manifest_path)
+        for path in (images_dir, labels_dir)
         if not path.exists()
     ]
     if missing:
@@ -118,7 +164,15 @@ def validate_source(source_dir: Path) -> tuple[Path, Path, Path, Path]:
     if not labels_dir.is_dir():
         raise NotADirectoryError(f"source labels path is not a directory: {labels_dir}")
 
-    return images_dir, labels_dir, classes_path, manifest_path
+    if classes_path.exists():
+        class_names = read_classes(classes_path)
+        class_source = str(classes_path)
+    else:
+        class_names = read_cli_classes(cli_class_names, class_names_csv)
+        class_source = "CLI --class-name/--class-names"
+
+    manifest_path = resolve_manifest_path(source_dir, manifest_arg)
+    return images_dir, labels_dir, class_names, class_source, manifest_path
 
 
 def collect_images(images_dir: Path) -> tuple[dict[str, list[Path]], list[Path]]:
@@ -249,6 +303,61 @@ def copy_sample(sample: dict[str, Path | str], output_dir: Path, split: str) -> 
     shutil.copy2(label_path, label_output)
 
 
+def format_duration(seconds: float | None) -> str:
+    """Format seconds as HH:MM:SS, or a placeholder before ETA is known."""
+    if seconds is None or not math.isfinite(seconds) or seconds < 0:
+        return "--:--:--"
+    rounded = int(seconds + 0.5)
+    hours, remainder = divmod(rounded, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def print_copy_progress(
+    copied: int,
+    total: int,
+    started_at: float,
+    *,
+    force_newline: bool = False,
+) -> None:
+    """Print copy progress with elapsed time and estimated time remaining."""
+    elapsed = time.monotonic() - started_at
+    ratio = copied / total if total else 1.0
+    eta = elapsed * (1.0 - ratio) / ratio if copied else None
+    end = "\n" if force_newline else "\r"
+    print(
+        f"Copy progress: {copied}/{total} samples ({ratio * 100:.1f}%) "
+        f"elapsed {format_duration(elapsed)} ETA {format_duration(eta)}",
+        end=end,
+        flush=True,
+    )
+
+
+def copy_split_samples(
+    split_map: dict[str, list[dict[str, Path | str]]],
+    output_dir: Path,
+    progress_interval: float,
+) -> None:
+    """Copy split samples while showing periodic ETA progress."""
+    total = sum(len(samples) for samples in split_map.values())
+    started_at = time.monotonic()
+    last_update = 0.0
+    copied = 0
+
+    print_copy_progress(0, total, started_at)
+    for split, samples in split_map.items():
+        for sample in samples:
+            copy_sample(sample, output_dir, split)
+            copied += 1
+            now = time.monotonic()
+            if now - last_update >= progress_interval or copied == total:
+                print_copy_progress(copied, total, started_at, force_newline=copied == total)
+                last_update = now
+
+    if total == 0:
+        print_copy_progress(0, total, started_at, force_newline=True)
+
+
 def format_list(items: list[str], empty_text: str = "None") -> str:
     """Format a markdown bullet list."""
     if not items:
@@ -261,6 +370,8 @@ def write_dataset_report(
     source_dir: Path,
     version: str,
     class_names: list[str],
+    class_source: str,
+    manifest_path: Path,
     manifest_rows: int | None,
     ratios: tuple[float, float, float],
     seed: int,
@@ -288,6 +399,8 @@ Generated: {now}
 - Output: `{output_dir}`
 - Version: `{version}`
 - Classes: {len(class_names)}
+- Class source: `{class_source}`
+- Manifest: `{manifest_path}`
 - Manifest rows: {manifest_rows if manifest_rows is not None else "unreadable"}
 - Train ratio: {train_ratio}
 - Val ratio: {val_ratio}
@@ -400,7 +513,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source",
         required=True,
-        help="Labeling System output directory containing images/, labels/, classes.txt, manifest.csv.",
+        help="Labeling System output directory containing images/ and labels/.",
     )
     parser.add_argument(
         "--output",
@@ -412,6 +525,35 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-ratio", type=float, default=0.1)
     parser.add_argument("--test-ratio", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--progress-interval",
+        type=float,
+        default=5.0,
+        help="Seconds between progress updates while copying valid samples.",
+    )
+    parser.add_argument(
+        "--class-name",
+        action="append",
+        default=[],
+        help=(
+            "Class name in YOLO class-id order. Repeat when the source export "
+            "does not contain classes.txt."
+        ),
+    )
+    parser.add_argument(
+        "--class-names",
+        help=(
+            "Comma-separated class names in YOLO class-id order, for example "
+            "soldier,vehicle,fire. Used only when classes.txt is missing."
+        ),
+    )
+    parser.add_argument(
+        "--manifest",
+        help=(
+            "Optional manifest path. Relative paths are resolved under --source. "
+            "If omitted, known manifest names are auto-detected."
+        ),
+    )
     parser.add_argument(
         "--force",
         action="store_true",
@@ -427,8 +569,12 @@ def main() -> int:
 
     try:
         validate_ratios(args.train_ratio, args.val_ratio, args.test_ratio)
-        images_dir, labels_dir, classes_path, manifest_path = validate_source(source_dir)
-        class_names = read_classes(classes_path)
+        images_dir, labels_dir, class_names, class_source, manifest_path = validate_source(
+            source_dir=source_dir,
+            cli_class_names=args.class_name,
+            class_names_csv=args.class_names,
+            manifest_arg=args.manifest,
+        )
         prepare_output_dir(source_dir, output_dir, args.force)
     except (OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -491,11 +637,16 @@ def main() -> int:
         args.seed,
     )
 
-    for split, samples in split_map.items():
-        for sample in samples:
-            copy_sample(sample, output_dir, split)
+    copy_split_samples(
+        split_map=split_map,
+        output_dir=output_dir,
+        progress_interval=max(args.progress_interval, 0.0),
+    )
 
-    shutil.copy2(classes_path, output_dir / "classes.txt")
+    (output_dir / "classes.txt").write_text(
+        "\n".join(class_names) + "\n",
+        encoding="utf-8",
+    )
     shutil.copy2(manifest_path, output_dir / "manifest.csv")
     (output_dir / "data.yaml").write_text(
         build_data_yaml(output_dir, class_names),
@@ -506,6 +657,8 @@ def main() -> int:
         source_dir=source_dir,
         version=args.version,
         class_names=class_names,
+        class_source=class_source,
+        manifest_path=manifest_path,
         manifest_rows=manifest_rows,
         ratios=(args.train_ratio, args.val_ratio, args.test_ratio),
         seed=args.seed,

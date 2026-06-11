@@ -199,6 +199,88 @@ python scripts/generate_training_report.py \
   --output reports/yolo11s_data_v1_0_baseline/training_report.md
 ```
 
+## Run YOLO Dataset EDA
+
+Run EDA before interpreting low recall, class-level AP gaps, or a large
+`mAP50` versus `mAP50-95` gap. The report summarizes split balance, class
+counts, tiny boxes, pixel box sizes, image quality proxies, label warnings, and
+sample ground-truth overlays.
+
+```bash
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v2.0 \
+  --output-dir reports/data_v2_0_eda \
+  --sample-images 40 \
+  --seed 42
+```
+
+With model prediction context:
+
+```bash
+RUN=yolo11m_data_v2_0_kaggle_img1280_b4_e100
+
+python scripts/eda_yolo_dataset.py \
+  --dataset data/versions/data_v2.0 \
+  --output-dir reports/data_v2_0_eda \
+  --sample-images 40 \
+  --seed 42 \
+  --run-dir runs/$RUN \
+  --pred-dir runs/${RUN}_pred_conf010
+```
+
+## Generate Markdown Experiment Report
+
+For `data_v2.0` runs, generate test artifacts and prediction samples before
+building the richer Markdown experiment report:
+
+```bash
+RUN=yolo11s_data_v2_0_img1280_b12_e100
+
+python scripts/validate_yolo.py \
+  --weights runs/$RUN/weights/best.pt \
+  --data data/versions/data_v2.0/data.yaml \
+  --imgsz 1280 \
+  --batch 12 \
+  --device 0 \
+  --split test \
+  --project runs \
+  --name ${RUN}_test
+
+python scripts/predict_yolo.py \
+  --weights runs/$RUN/weights/best.pt \
+  --source data/versions/data_v2.0/images/test \
+  --imgsz 1280 \
+  --conf 0.10 \
+  --iou 0.5 \
+  --device 0 \
+  --project runs \
+  --name ${RUN}_pred_conf010 \
+  --max-det 300
+
+python scripts/predict_yolo.py \
+  --weights runs/$RUN/weights/best.pt \
+  --source data/versions/data_v2.0/images/test \
+  --imgsz 1280 \
+  --conf 0.25 \
+  --iou 0.5 \
+  --device 0 \
+  --project runs \
+  --name ${RUN}_pred_conf025 \
+  --max-det 300
+
+python scripts/generate_experiment_report_md.py \
+  --run-dir runs/$RUN \
+  --test-dir runs/${RUN}_test \
+  --pred-dir runs/${RUN}_pred_conf010 \
+  --pred-dir-conf025 runs/${RUN}_pred_conf025 \
+  --dataset data/versions/data_v2.0 \
+  --output reports/$RUN/experiment_report.md
+```
+
+The report reads `results.csv`, `args.yaml`, `experiment_metadata.json`, dataset
+label counts, Ultralytics plots, optional test plots, and qualitative prediction
+images. Missing artifacts are listed in the report instead of failing the run.
+
 ## Metric Interpretation
 
 - `box_loss`: localization error for predicted bounding boxes. Lower is better.
