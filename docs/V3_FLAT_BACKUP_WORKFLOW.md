@@ -65,6 +65,10 @@ The script auto-detects known manifest names such as
 `docker_labeled_manifest.csv` and copies the selected manifest to
 `data/versions/data_v3.0/manifest.csv`.
 
+To build a labeled-only follow-up version, set `VERSION=data_v3.1` and add
+`--exclude-empty-labels` to the same command. This skips images whose matching
+YOLO label file has no bbox rows, without creating a filtered source directory.
+
 ## Validate Labels
 
 ```bash
