@@ -88,3 +88,45 @@ def test_prepare_data_version_accepts_flat_backup_with_cli_classes(tmp_path: Pat
     assert "docker_labeled_manifest.csv" in report_text
     assert "missing_label.jpg" in report_text
     assert "orphan_label.txt" in report_text
+
+
+def test_prepare_data_version_can_exclude_empty_labels(tmp_path: Path) -> None:
+    source = build_flat_backup_export(tmp_path)
+    write_image(source / "images" / "empty_label.jpg", color=200)
+    write_text(source / "labels" / "empty_label.txt", "")
+    output = tmp_path / "data" / "versions" / "data_v3.1"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/prepare_data_version.py",
+            "--source",
+            str(source),
+            "--output",
+            str(output),
+            "--version",
+            "data_v3.1",
+            "--class-names",
+            "soldier,vehicle,fire",
+            "--train-ratio",
+            "0.5",
+            "--val-ratio",
+            "0.25",
+            "--test-ratio",
+            "0.25",
+            "--seed",
+            "42",
+            "--exclude-empty-labels",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    copied_labels = list((output / "labels").rglob("*.txt"))
+    assert len(copied_labels) == 4
+    assert not any(path.name == "empty_label.txt" for path in copied_labels)
+
+    report_text = (output / "dataset_report.md").read_text(encoding="utf-8")
+    assert "empty_label.txt" in report_text

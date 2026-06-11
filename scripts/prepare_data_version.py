@@ -262,6 +262,15 @@ def validate_label_file(label_path: Path, num_classes: int, display_path: str) -
     return errors
 
 
+def label_has_box(label_path: Path) -> bool:
+    """Return true when a YOLO label file has at least one bbox-like row."""
+    try:
+        lines = label_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    return any(len(line.strip().split()) >= 5 for line in lines if line.strip())
+
+
 def split_samples(
     samples: list[dict[str, Path | str]],
     train_ratio: float,
@@ -429,6 +438,10 @@ Generated: {now}
 
 {format_list(report_items.get("invalid_label_errors", []))}
 
+### Empty Labels Excluded
+
+{format_list(report_items.get("empty_labels_excluded", []))}
+
 ### Duplicate Image Stems
 
 {format_list(report_items.get("duplicate_image_stems", []))}
@@ -555,6 +568,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--exclude-empty-labels",
+        action="store_true",
+        help="Skip images whose matching label file has no bbox rows.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Replace the output directory if it already exists.",
@@ -588,6 +606,7 @@ def main() -> int:
         "images_without_labels": [],
         "orphan_labels": [],
         "invalid_label_errors": [],
+        "empty_labels_excluded": [],
         "duplicate_image_stems": [],
         "unsupported_images": [
             path.relative_to(images_dir).as_posix() for path in unsupported_images
@@ -614,6 +633,9 @@ def main() -> int:
         label_errors = validate_label_file(label_path, len(class_names), display_label)
         if label_errors:
             report_items["invalid_label_errors"].extend(label_errors)
+            continue
+        if args.exclude_empty_labels and not label_has_box(label_path):
+            report_items["empty_labels_excluded"].append(display_label)
             continue
 
         valid_samples.append(
