@@ -57,6 +57,7 @@ python scripts/prepare_data_version.py \
   --val-ratio 0.1 \
   --test-ratio 0.1 \
   --seed 42 \
+  --progress-interval 10 \
   --force
 ```
 
@@ -100,7 +101,7 @@ python scripts/compare_dataset_versions.py \
 ## Track With DVC
 
 ```bash
-dvc add "$OUT"
+dvc add --verbose "$OUT"
 git add data/versions/data_v3.0.dvc data/versions/.gitignore
 git add scripts/prepare_data_version.py tests/test_prepare_data_version.py docs/V3_FLAT_BACKUP_WORKFLOW.md
 git add reports/dataset_v2_vs_v3.md
@@ -122,7 +123,8 @@ This uses the same packaging shape as `data_v2.0`: a `.tar.gz` archive plus a
 ```bash
 python scripts/package_dataset_version.py \
   --dataset "$OUT" \
-  --output-dir archives
+  --output-dir archives \
+  --progress-interval 10
 
 rclone mkdir Khanhdrive:YOLO_DVC_Backup/data_v3.0
 rclone copy archives/data_v3.0_yolo_dataset.tar.gz Khanhdrive:YOLO_DVC_Backup/data_v3.0/ --progress

@@ -73,6 +73,8 @@ def test_prepare_data_version_accepts_flat_backup_with_cli_classes(tmp_path: Pat
     )
 
     assert result.returncode == 0, result.stderr
+    assert "Copy progress:" in result.stdout
+    assert "ETA" in result.stdout
     assert (output / "classes.txt").read_text(encoding="utf-8") == "soldier\nvehicle\nfire\n"
     assert (output / "manifest.csv").read_text(encoding="utf-8").startswith("image,label\n")
 

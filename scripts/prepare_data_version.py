@@ -16,6 +16,7 @@ import math
 import random
 import shutil
 import sys
+import time
 from pathlib import Path
 
 
@@ -302,6 +303,61 @@ def copy_sample(sample: dict[str, Path | str], output_dir: Path, split: str) -> 
     shutil.copy2(label_path, label_output)
 
 
+def format_duration(seconds: float | None) -> str:
+    """Format seconds as HH:MM:SS, or a placeholder before ETA is known."""
+    if seconds is None or not math.isfinite(seconds) or seconds < 0:
+        return "--:--:--"
+    rounded = int(seconds + 0.5)
+    hours, remainder = divmod(rounded, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def print_copy_progress(
+    copied: int,
+    total: int,
+    started_at: float,
+    *,
+    force_newline: bool = False,
+) -> None:
+    """Print copy progress with elapsed time and estimated time remaining."""
+    elapsed = time.monotonic() - started_at
+    ratio = copied / total if total else 1.0
+    eta = elapsed * (1.0 - ratio) / ratio if copied else None
+    end = "\n" if force_newline else "\r"
+    print(
+        f"Copy progress: {copied}/{total} samples ({ratio * 100:.1f}%) "
+        f"elapsed {format_duration(elapsed)} ETA {format_duration(eta)}",
+        end=end,
+        flush=True,
+    )
+
+
+def copy_split_samples(
+    split_map: dict[str, list[dict[str, Path | str]]],
+    output_dir: Path,
+    progress_interval: float,
+) -> None:
+    """Copy split samples while showing periodic ETA progress."""
+    total = sum(len(samples) for samples in split_map.values())
+    started_at = time.monotonic()
+    last_update = 0.0
+    copied = 0
+
+    print_copy_progress(0, total, started_at)
+    for split, samples in split_map.items():
+        for sample in samples:
+            copy_sample(sample, output_dir, split)
+            copied += 1
+            now = time.monotonic()
+            if now - last_update >= progress_interval or copied == total:
+                print_copy_progress(copied, total, started_at, force_newline=copied == total)
+                last_update = now
+
+    if total == 0:
+        print_copy_progress(0, total, started_at, force_newline=True)
+
+
 def format_list(items: list[str], empty_text: str = "None") -> str:
     """Format a markdown bullet list."""
     if not items:
@@ -470,6 +526,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-ratio", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
+        "--progress-interval",
+        type=float,
+        default=5.0,
+        help="Seconds between progress updates while copying valid samples.",
+    )
+    parser.add_argument(
         "--class-name",
         action="append",
         default=[],
@@ -575,9 +637,11 @@ def main() -> int:
         args.seed,
     )
 
-    for split, samples in split_map.items():
-        for sample in samples:
-            copy_sample(sample, output_dir, split)
+    copy_split_samples(
+        split_map=split_map,
+        output_dir=output_dir,
+        progress_interval=max(args.progress_interval, 0.0),
+    )
 
     (output_dir / "classes.txt").write_text(
         "\n".join(class_names) + "\n",
