@@ -63,6 +63,105 @@ python scripts/check_yolo_dataset.py \
   --dataset data/versions/data_v1.0
 ```
 
+## Boss-style RGB/Thermal Training Setup
+
+`data_v3.1` contains RGB classes and thermal-prefixed classes in the same YOLO
+class list. Split them before training so each model sees one visual domain at a
+time. Thermal classes are underrepresented and domain-shifted, so mixing them
+with RGB labels can hide thermal-specific failure modes. Fire also has fewer
+instances than the main object classes, so the RGB recipe upsamples train fire
+samples by `2x` to give that class more sampling exposure without changing
+validation or test distribution.
+
+Build the RGB fire-x2 variant:
+
+```bash
+python scripts/create_dataset_variant.py \
+  --source data/versions/data_v3.1 \
+  --output data/versions/data_v3.1_rgb_firex2 \
+  --mode rgb \
+  --upsample-class fire \
+  --upsample-factor 2 \
+  --train-only-upsampling \
+  --force
+```
+
+Train all four RGB models:
+
+```bash
+python scripts/run_batch_training.py \
+  --dataset data/versions/data_v3.1_rgb_firex2 \
+  --models yolo11s.pt yolo11m.pt yolo26s.pt yolo26m.pt \
+  --run-prefix rgb_firex2 \
+  --imgsz 1280 \
+  --batch 8 \
+  --epochs 100 \
+  --device 0 \
+  --optimizer AdamW \
+  --lr0 0.0005 \
+  --patience 25 \
+  --workers 4 \
+  --close-mosaic 20 \
+  --conf-list 0.10 0.25 \
+  --upload-remote Khanhdrive:YOLO_DVC_Backup/results_v3.1_rgb_firex2
+```
+
+Build the thermal-only variant:
+
+```bash
+python scripts/create_dataset_variant.py \
+  --source data/versions/data_v3.1 \
+  --output data/versions/data_v3.1_thermal \
+  --mode thermal \
+  --rename-thermal \
+  --force
+```
+
+Train all four thermal models:
+
+```bash
+python scripts/run_batch_training.py \
+  --dataset data/versions/data_v3.1_thermal \
+  --models yolo11s.pt yolo11m.pt yolo26s.pt yolo26m.pt \
+  --run-prefix thermal \
+  --imgsz 1280 \
+  --batch 8 \
+  --epochs 100 \
+  --device 0 \
+  --optimizer AdamW \
+  --lr0 0.0005 \
+  --patience 25 \
+  --workers 4 \
+  --close-mosaic 20 \
+  --conf-list 0.10 0.25 \
+  --upload-remote Khanhdrive:YOLO_DVC_Backup/results_v3.1_thermal
+```
+
+Quick preset commands:
+
+```bash
+bash scripts/run_rgb_firex2_all_models.sh
+bash scripts/run_thermal_all_models.sh
+```
+
+Use the same commands on Kaggle or a server after changing the dataset path and
+remote path as needed. `create_dataset_variant.py` writes `data.yaml` with an
+absolute dataset path, so moved datasets should be regenerated with
+`python scripts/create_yolo_yaml.py --dataset <dataset>`.
+
+OOM notes:
+
+- Default batch is `8`.
+- If OOM occurs on `yolo26m`, rerun `run_batch_training.py` with `--batch 4`.
+- If it still OOMs, rerun with `--batch 2`.
+
+Outputs:
+
+- Reports: `reports/<RUN>/experiment_report.md`
+- Archives: `archives/<RUN>_report_outputs.tar.gz`
+- Batch summary: `reports/batch_training_<run_prefix>_summary.md`
+- Uploaded artifacts: `<upload-remote>/<RUN>/` when `--upload-remote` is set
+
 ## Prepare Pretrained Weights
 
 ```bash
